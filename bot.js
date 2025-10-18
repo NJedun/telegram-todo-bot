@@ -1,9 +1,9 @@
 import { Telegraf } from "telegraf";
 import express from "express";
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { db } from "./firebase-config.js";
 
 dotenv.config();
 
@@ -52,47 +52,36 @@ app.use(express.static(path.join(__dirname, "public")));
 // Initialize Telegram bot
 const bot = new Telegraf(BOT_TOKEN);
 
-// Tasks storage (file-based)
-const TASKS_FILE = path.join(__dirname, "tasks.json");
+// Firestore collection reference
+const tasksCollection = db.collection('tasks');
+const SHARED_TASKS_DOC = 'shared';
 
-// Load tasks from file
-const loadTasks = () => {
+// Load tasks from Firestore
+const loadTasks = async () => {
   try {
-    if (fs.existsSync(TASKS_FILE)) {
-      const data = fs.readFileSync(TASKS_FILE, "utf8");
-      return JSON.parse(data);
+    const doc = await tasksCollection.doc(SHARED_TASKS_DOC).get();
+    if (doc.exists) {
+      return doc.data().tasks || [];
     }
-    return {};
+    return [];
   } catch (error) {
-    console.error("Error loading tasks:", error);
-    return {};
+    console.error("Error loading tasks from Firestore:", error);
+    return [];
   }
 };
 
-// Save tasks to file
-const saveTasks = (tasks) => {
+// Save tasks to Firestore
+const saveTasks = async (tasks) => {
   try {
-    fs.writeFileSync(TASKS_FILE, JSON.stringify(tasks, null, 2));
+    await tasksCollection.doc(SHARED_TASKS_DOC).set({
+      tasks: tasks,
+      updatedAt: new Date()
+    });
   } catch (error) {
-    console.error("Error saving tasks:", error);
+    console.error("Error saving tasks to Firestore:", error);
+    throw error;
   }
 };
-
-// Initialize tasks storage - now using shared list (key: "shared")
-let allTasks = loadTasks();
-
-// Migrate old format (array) to new format (object with shared key)
-if (Array.isArray(allTasks)) {
-  console.log('Migrating old tasks format to new shared format...');
-  allTasks = { shared: allTasks };
-  saveTasks(allTasks);
-}
-
-// Ensure shared array exists
-if (!allTasks.shared) {
-  allTasks.shared = [];
-  saveTasks(allTasks);
-}
 
 // Bot commands
 bot.start((ctx) => {
@@ -135,23 +124,31 @@ app.post("/auth/login", (req, res) => {
 });
 
 // GET /tasks - Get shared tasks (protected)
-app.get("/tasks", authenticate, (req, res) => {
-  const sharedTasks = allTasks.shared || [];
-  res.json({ tasks: sharedTasks });
+app.get("/tasks", authenticate, async (req, res) => {
+  try {
+    const tasks = await loadTasks();
+    res.json({ tasks: tasks });
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({ error: "Failed to load tasks" });
+  }
 });
 
 // POST /tasks - Update shared tasks (protected)
-app.post("/tasks", authenticate, (req, res) => {
-  const { tasks } = req.body;
+app.post("/tasks", authenticate, async (req, res) => {
+  try {
+    const { tasks } = req.body;
 
-  if (!Array.isArray(tasks)) {
-    return res.status(400).json({ error: "tasks must be an array" });
+    if (!Array.isArray(tasks)) {
+      return res.status(400).json({ error: "tasks must be an array" });
+    }
+
+    await saveTasks(tasks);
+    res.json({ success: true, tasks: tasks });
+  } catch (error) {
+    console.error("Error saving tasks:", error);
+    res.status(500).json({ error: "Failed to save tasks" });
   }
-
-  allTasks.shared = tasks;
-  saveTasks(allTasks);
-
-  res.json({ success: true, tasks: allTasks.shared });
 });
 
 // Health check endpoint
