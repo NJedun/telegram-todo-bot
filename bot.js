@@ -1,109 +1,138 @@
-import { Telegraf, session } from "telegraf";
+import { Telegraf, Markup } from "telegraf";
+import express from "express";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Environment variables
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const PORT = process.env.PORT || 3000;
+const WEBAPP_URL = process.env.WEBAPP_URL || `https://your-domain.com`;
+
 if (!BOT_TOKEN) {
-  console.error("❌ Ошибка: BOT_TOKEN не найден. Проверь .env файл.");
+  console.error("❌ Error: BOT_TOKEN not found. Check your .env file.");
   process.exit(1);
 }
 
+// Initialize Express app
+const app = express();
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// Initialize Telegram bot
 const bot = new Telegraf(BOT_TOKEN);
 
-bot.use(session());
+// Tasks storage (file-based)
+const TASKS_FILE = path.join(__dirname, "tasks.json");
 
-// Загружаем список задач из файла
+// Load tasks from file
 const loadTasks = () => {
   try {
-    return JSON.parse(fs.readFileSync("tasks.json", "utf8"));
-  } catch {
-    return [];
+    if (fs.existsSync(TASKS_FILE)) {
+      const data = fs.readFileSync(TASKS_FILE, "utf8");
+      return JSON.parse(data);
+    }
+    return {};
+  } catch (error) {
+    console.error("Error loading tasks:", error);
+    return {};
   }
 };
 
-// Сохраняем задачи в файл
+// Save tasks to file
 const saveTasks = (tasks) => {
-  fs.writeFileSync("tasks.json", JSON.stringify(tasks, null, 2));
+  try {
+    fs.writeFileSync(TASKS_FILE, JSON.stringify(tasks, null, 2));
+  } catch (error) {
+    console.error("Error saving tasks:", error);
+  }
 };
 
-// Общий список
-let tasks = loadTasks();
+// Initialize tasks storage
+let allTasks = loadTasks();
 
+// Bot commands
 bot.start((ctx) => {
+  const webAppUrl = `${WEBAPP_URL}?userId=${ctx.from.id}`;
+
   ctx.reply(
-    "Привет! 👋 Это ваш общий список дел.\n\n" +
-      "Используй команды:\n" +
-      "/add — добавить задачу\n" +
-      "/list — показать список\n" +
-      "/done — отметить выполненной\n" +
-      "/delete — удалить задачу"
+    `👋 Welcome to your To-Do List!\n\n` +
+    `Click the button below to open your tasks.`,
+    Markup.keyboard([
+      Markup.button.webApp("📝 Open To-Do", webAppUrl)
+    ]).resize()
   );
 });
 
-// Добавление задачи
-bot.command("add", async (ctx) => {
-  ctx.reply("✏️ Напиши текст задачи:");
-  ctx.session = { state: "adding" };
+bot.command("help", (ctx) => {
+  ctx.reply(
+    `🤖 To-Do Bot Help\n\n` +
+    `/start - Open the To-Do list\n` +
+    `/help - Show this help message\n\n` +
+    `Click "📝 Open To-Do" to manage your tasks!`
+  );
 });
 
-bot.on("text", (ctx) => {
-  if (!ctx.session) ctx.session = {};
+// Express API endpoints
 
-  if (ctx.session.state === "adding") {
-    tasks.push({ text: ctx.message.text, done: false });
-    saveTasks(tasks);
-    ctx.reply("✅ Задача добавлена!");
-    ctx.session.state = null;
-  } else if (ctx.session.state === "marking") {
-    const index = parseInt(ctx.message.text) - 1;
-    if (index >= 0 && index < tasks.length) {
-      tasks[index].done = true;
-      saveTasks(tasks);
-      ctx.reply("🎉 Задача отмечена выполненной!");
-    } else {
-      ctx.reply("❌ Неверный номер.");
-    }
-    ctx.session.state = null;
-  } else if (ctx.session.state === "deleting") {
-    const index = parseInt(ctx.message.text) - 1;
-    if (index >= 0 && index < tasks.length) {
-      const deleted = tasks.splice(index, 1);
-      saveTasks(tasks);
-      ctx.reply(`🗑 Удалена: ${deleted[0].text}`);
-    } else {
-      ctx.reply("❌ Неверный номер.");
-    }
-    ctx.session.state = null;
+// GET /tasks - Get all tasks for a user
+app.get("/tasks", (req, res) => {
+  const userId = req.query.userId;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
   }
+
+  const userTasks = allTasks[userId] || [];
+  res.json({ tasks: userTasks });
 });
 
-// Показ списка
-bot.command("list", (ctx) => {
-  if (tasks.length === 0) {
-    ctx.reply("📭 Список пуст.");
-  } else {
-    const list = tasks
-      .map(
-        (t, i) =>
-          `${i + 1}. ${t.done ? "✅" : "⬜️"} ${t.text}`
-      )
-      .join("\n");
-    ctx.reply(`📋 Текущий список:\n\n${list}`);
+// POST /tasks - Update tasks for a user
+app.post("/tasks", (req, res) => {
+  const { userId, tasks } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
   }
+
+  if (!Array.isArray(tasks)) {
+    return res.status(400).json({ error: "tasks must be an array" });
+  }
+
+  allTasks[userId] = tasks;
+  saveTasks(allTasks);
+
+  res.json({ success: true, tasks: allTasks[userId] });
 });
 
-// Отметить задачу выполненной
-bot.command("done", (ctx) => {
-  if (tasks.length === 0) return ctx.reply("📭 Список пуст.");
-  ctx.reply("Напиши номер задачи для отметки выполненной:");
-  ctx.session = { state: "marking" };
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Удалить задачу
-bot.command("delete", (ctx) => {
-  if (tasks.length === 0) return ctx.reply("📭 Список пуст.");
-  ctx.reply("Напиши номер задачи для удаления:");
-  ctx.session = { state: "deleting" };
+// Start Express server
+app.listen(PORT, () => {
+  console.log(`✅ Express server running on port ${PORT}`);
+  console.log(`📱 WebApp URL: ${WEBAPP_URL}`);
 });
 
+// Start Telegram bot
 bot.launch();
-console.log("✅ Бот запущен...");
+console.log("✅ Telegram bot started...");
+
+// Enable graceful stop
+process.once("SIGINT", () => {
+  bot.stop("SIGINT");
+  process.exit(0);
+});
+
+process.once("SIGTERM", () => {
+  bot.stop("SIGTERM");
+  process.exit(0);
+});

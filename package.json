@@ -1,16 +1,18 @@
 {
   "name": "telegram-todo-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js",
+    "dev": "node --watch bot.js"
   },
-  "keywords": [],
+  "keywords": ["telegram", "bot", "todo", "webapp"],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Telegram Mini App Todo List with WebApp UI",
   "dependencies": {
     "dotenv": "^17.2.3",
+    "express": "^4.18.2",
     "telegraf": "^4.16.3"
   },
   "type": "module"

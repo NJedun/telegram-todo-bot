@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>To-Do List</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📝 My To-Do List</h1>
+      <p class="subtitle" id="userInfo">Loading...</p>
+    </header>
+
+    <div class="add-task-section">
+      <div class="input-group">
+        <input
+          type="text"
+          id="taskInput"
+          placeholder="Add a new task..."
+          autocomplete="off"
+        >
+        <button id="addBtn" class="add-btn">
+          <span class="add-icon">+</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="tasks-container">
+      <div id="tasksList" class="tasks-list">
+        <!-- Tasks will be dynamically inserted here -->
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">✨</div>
+        <p>No tasks yet!</p>
+        <p class="empty-subtitle">Add your first task above</p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <span id="statsText">0 tasks</span>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
