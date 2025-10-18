@@ -62,14 +62,13 @@ bot.start((ctx) => {
   const webAppUrl = `${WEBAPP_URL}?userId=${ctx.from.id}`;
 
   ctx.reply(
-    `👋 Welcome to your To-Do List!!\n\n` +
+    `👋 Welcome to your To-Do List!\n\n` +
     `Click the button below to open your tasks.`,
     {
       reply_markup: {
-        keyboard: [
+        inline_keyboard: [
           [{ text: "📝 Open To-Do", web_app: { url: webAppUrl } }]
-        ],
-        resize_keyboard: true
+        ]
       }
     }
   );
