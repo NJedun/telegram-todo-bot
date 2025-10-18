@@ -25,10 +25,12 @@ const emptyState = document.getElementById('emptyState');
 const statsText = document.getElementById('statsText');
 const userInfo = document.getElementById('userInfo');
 const tabBtns = document.querySelectorAll('.tab-btn');
+const toggleBtns = document.querySelectorAll('.toggle-btn');
 
 // State
 let tasks = [];
 let currentFilter = 'active'; // 'all', 'active', 'completed'
+let currentList = 'shared'; // 'shared' (Travel) or 'goals'
 
 // API Base URL (adjust for production)
 const API_URL = window.location.origin;
@@ -63,6 +65,24 @@ async function init() {
     });
   });
 
+  // List toggle listeners
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Update active toggle
+      toggleBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Update current list
+      currentList = btn.dataset.list;
+
+      // Load tasks for the new list
+      loadTasks();
+
+      // Haptic feedback
+      tg.HapticFeedback?.impactOccurred('light');
+    });
+  });
+
   // Provide haptic feedback
   tg.ready();
 }
@@ -70,7 +90,7 @@ async function init() {
 // Load tasks from server
 async function loadTasks() {
   try {
-    const response = await fetch(`${API_URL}/tasks`, {
+    const response = await fetch(`${API_URL}/tasks?list=${currentList}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`
       }
@@ -102,7 +122,8 @@ async function saveTasks() {
         'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({
-        tasks: tasks
+        tasks: tasks,
+        list: currentList
       })
     });
 

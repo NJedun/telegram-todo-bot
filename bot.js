@@ -54,12 +54,11 @@ const bot = new Telegraf(BOT_TOKEN);
 
 // Firestore collection reference
 const tasksCollection = db.collection('tasks');
-const SHARED_TASKS_DOC = 'shared';
 
 // Load tasks from Firestore
-const loadTasks = async () => {
+const loadTasks = async (listName = 'shared') => {
   try {
-    const doc = await tasksCollection.doc(SHARED_TASKS_DOC).get();
+    const doc = await tasksCollection.doc(listName).get();
     if (doc.exists) {
       return doc.data().tasks || [];
     }
@@ -71,9 +70,9 @@ const loadTasks = async () => {
 };
 
 // Save tasks to Firestore
-const saveTasks = async (tasks) => {
+const saveTasks = async (tasks, listName = 'shared') => {
   try {
-    await tasksCollection.doc(SHARED_TASKS_DOC).set({
+    await tasksCollection.doc(listName).set({
       tasks: tasks,
       updatedAt: new Date()
     });
@@ -123,10 +122,11 @@ app.post("/auth/login", (req, res) => {
   }
 });
 
-// GET /tasks - Get shared tasks (protected)
+// GET /tasks - Get tasks (protected)
 app.get("/tasks", authenticate, async (req, res) => {
   try {
-    const tasks = await loadTasks();
+    const listName = req.query.list || 'shared';
+    const tasks = await loadTasks(listName);
     res.json({ tasks: tasks });
   } catch (error) {
     console.error("Error fetching tasks:", error);
@@ -134,16 +134,17 @@ app.get("/tasks", authenticate, async (req, res) => {
   }
 });
 
-// POST /tasks - Update shared tasks (protected)
+// POST /tasks - Update tasks (protected)
 app.post("/tasks", authenticate, async (req, res) => {
   try {
-    const { tasks } = req.body;
+    const { tasks, list } = req.body;
 
     if (!Array.isArray(tasks)) {
       return res.status(400).json({ error: "tasks must be an array" });
     }
 
-    await saveTasks(tasks);
+    const listName = list || 'shared';
+    await saveTasks(tasks, listName);
     res.json({ success: true, tasks: tasks });
   } catch (error) {
     console.error("Error saving tasks:", error);

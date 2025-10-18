@@ -62,6 +62,39 @@ h1 {
   font-weight: 400;
 }
 
+/* List Toggle */
+.list-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 4px;
+  background-color: var(--tg-theme-secondary-bg-color);
+  border-radius: var(--border-radius);
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: transparent;
+  color: var(--tg-theme-hint-color);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.toggle-btn.active {
+  background-color: var(--tg-theme-button-color);
+  color: var(--tg-theme-button-text-color);
+  box-shadow: var(--shadow);
+}
+
 /* Add Task Section */
 .add-task-section {
   margin-bottom: 24px;
