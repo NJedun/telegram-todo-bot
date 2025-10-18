@@ -90,6 +90,7 @@ async function init() {
 // Load tasks from server
 async function loadTasks() {
   try {
+    console.log(`Loading tasks for list: ${currentList}`);
     const response = await fetch(`${API_URL}/tasks?list=${currentList}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`
@@ -105,6 +106,7 @@ async function loadTasks() {
 
     const data = await response.json();
     tasks = data.tasks || [];
+    console.log(`Loaded ${tasks.length} tasks from ${currentList}:`, tasks);
     renderTasks();
   } catch (error) {
     console.error('Error loading tasks:', error);
@@ -185,9 +187,11 @@ async function toggleTask(id) {
   const task = tasks.find(t => t.id === id);
   if (task) {
     task.done = !task.done;
+    console.log(`Task toggled: ${task.text}, done: ${task.done}, list: ${currentList}`);
     tg.HapticFeedback.impactOccurred('light');
     renderTasks();
     await saveTasks();
+    console.log(`Task saved to ${currentList} list`);
   }
 }
 
@@ -223,14 +227,14 @@ function renderTasks() {
   if (filteredTasks.length === 0) {
     emptyState.classList.remove('hidden');
     if (currentFilter === 'active') {
-      emptyState.querySelector('p').textContent = 'No active tasks!';
-      emptyState.querySelector('.empty-subtitle').textContent = 'All tasks completed 🎉';
+      emptyState.querySelector('p').textContent = 'Нет активных задач!';
+      emptyState.querySelector('.empty-subtitle').textContent = 'Все задачи выполнены 🎉';
     } else if (currentFilter === 'completed') {
-      emptyState.querySelector('p').textContent = 'No completed tasks yet!';
-      emptyState.querySelector('.empty-subtitle').textContent = 'Mark tasks as done to see them here';
+      emptyState.querySelector('p').textContent = 'Нет завершенных задач!';
+      emptyState.querySelector('.empty-subtitle').textContent = 'Отметьте задачи как выполненные';
     } else {
-      emptyState.querySelector('p').textContent = 'No tasks yet!';
-      emptyState.querySelector('.empty-subtitle').textContent = 'Add your first task above';
+      emptyState.querySelector('p').textContent = 'Пока нет задач!';
+      emptyState.querySelector('.empty-subtitle').textContent = 'Добавьте вашу первую задачу выше';
     }
   } else {
     emptyState.classList.add('hidden');
