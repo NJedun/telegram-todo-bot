@@ -117,9 +117,15 @@ bot.command("help", (ctx) => {
 app.post("/auth/login", (req, res) => {
   const { password } = req.body;
 
+  console.log('Login attempt - Received password:', password);
+  console.log('Expected password:', APP_PASSWORD);
+  console.log('Match:', password === APP_PASSWORD);
+
   if (password === APP_PASSWORD) {
+    console.log('✅ Login successful');
     res.json({ success: true, token: APP_PASSWORD });
   } else {
+    console.log('❌ Login failed - password mismatch');
     res.json({ success: false, message: "Incorrect password" });
   }
 });
