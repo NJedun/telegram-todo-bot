@@ -293,11 +293,11 @@ function updateStats() {
   const pending = total - completed;
 
   if (total === 0) {
-    statsText.textContent = 'No tasks';
+    statsText.textContent = 'Нет задач';
   } else if (completed === total) {
-    statsText.textContent = `🎉 All ${total} tasks completed!`;
+    statsText.textContent = `🎉 Все ${total} задач выполнено!`;
   } else {
-    statsText.textContent = `${pending} pending · ${completed} completed · ${total} total`;
+    statsText.textContent = `${pending} активных · ${completed} завершено · ${total} всего`;
   }
 }
 

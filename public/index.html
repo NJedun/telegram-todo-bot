@@ -23,11 +23,11 @@
 <body>
   <div class="container">
     <header>
-      <h1>📝 My To-Do List</h1>
-      <p class="subtitle" id="userInfo">Loading...</p>
+      <h1>📝 Мой список дел</h1>
+      <p class="subtitle" id="userInfo">Загрузка...</p>
       <div class="list-toggle">
-        <button class="toggle-btn active" data-list="shared">✈️ Travel</button>
-        <button class="toggle-btn" data-list="goals">🎯 Goals</button>
+        <button class="toggle-btn active" data-list="shared">📋 Активности</button>
+        <button class="toggle-btn" data-list="goals">🎯 Цели</button>
       </div>
     </header>
 
@@ -36,7 +36,7 @@
         <input
           type="text"
           id="taskInput"
-          placeholder="Add a new task..."
+          placeholder="Добавить новую задачу..."
           autocomplete="off"
         >
         <button id="addBtn" class="add-btn">
@@ -46,9 +46,9 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-filter="active">Active</button>
-      <button class="tab-btn" data-filter="completed">Completed</button>
-      <button class="tab-btn" data-filter="all">All</button>
+      <button class="tab-btn active" data-filter="active">Активные</button>
+      <button class="tab-btn" data-filter="completed">Завершенные</button>
+      <button class="tab-btn" data-filter="all">Все</button>
     </div>
 
     <div class="tasks-container">
@@ -58,8 +58,8 @@
 
       <div id="emptyState" class="empty-state">
         <div class="empty-icon">✨</div>
-        <p>No tasks yet!</p>
-        <p class="empty-subtitle">Add your first task above</p>
+        <p>Пока нет задач!</p>
+        <p class="empty-subtitle">Добавьте вашу первую задачу выше</p>
       </div>
     </div>
 
