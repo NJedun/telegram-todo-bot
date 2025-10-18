@@ -1,10 +1,12 @@
+// Check authentication
+const authToken = localStorage.getItem('authToken');
+if (!authToken) {
+  window.location.href = '/';
+}
+
 // Initialize Telegram WebApp
 const tg = window.Telegram.WebApp;
 tg.expand();
-
-// Get user ID from URL or Telegram WebApp
-const urlParams = new URLSearchParams(window.location.search);
-const userId = urlParams.get('userId') || tg.initDataUnsafe?.user?.id || 'demo';
 
 // Apply Telegram theme colors
 document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
@@ -33,7 +35,7 @@ const API_URL = window.location.origin;
 async function init() {
   // Display user info
   const userName = tg.initDataUnsafe?.user?.first_name || 'User';
-  userInfo.textContent = `Welcome, ${userName}!`;
+  userInfo.textContent = `Welcome, ${userName}! (Shared List)`;
 
   // Load tasks
   await loadTasks();
@@ -53,7 +55,19 @@ async function init() {
 // Load tasks from server
 async function loadTasks() {
   try {
-    const response = await fetch(`${API_URL}/tasks?userId=${userId}`);
+    const response = await fetch(`${API_URL}/tasks`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    if (response.status === 401) {
+      // Token invalid, redirect to login
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+      return;
+    }
+
     const data = await response.json();
     tasks = data.tasks || [];
     renderTasks();
@@ -70,12 +84,19 @@ async function saveTasks() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({
-        userId: userId,
         tasks: tasks
       })
     });
+
+    if (response.status === 401) {
+      // Token invalid, redirect to login
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+      return;
+    }
 
     if (!response.ok) {
       throw new Error('Failed to save tasks');

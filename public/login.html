@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Your personal to-do list manager">
+  <meta name="theme-color" content="#2481cc">
+  <title>Login - To-Do List</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .login-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-box {
+      background: var(--tg-theme-bg-color);
+      border: 2px solid var(--tg-theme-secondary-bg-color);
+      border-radius: var(--border-radius);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: var(--shadow-hover);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .login-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--tg-theme-text-color);
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      font-size: 14px;
+      color: var(--tg-theme-hint-color);
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .password-input {
+      padding: 16px;
+      font-size: 16px;
+      border: 2px solid var(--tg-theme-secondary-bg-color);
+      border-radius: var(--border-radius);
+      background-color: var(--tg-theme-bg-color);
+      color: var(--tg-theme-text-color);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .password-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(36, 129, 204, 0.1);
+    }
+
+    .login-btn {
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      background-color: var(--tg-theme-button-color);
+      color: var(--tg-theme-button-text-color);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .error-message {
+      padding: 12px;
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 2px solid var(--danger-color);
+      border-radius: var(--border-radius);
+      color: var(--danger-color);
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <div class="login-header">
+        <div class="login-icon">🔐</div>
+        <h1 class="login-title">Welcome Back!</h1>
+        <p class="login-subtitle">Enter password to access your shared to-do list</p>
+      </div>
+
+      <form class="login-form" id="loginForm">
+        <div id="errorMessage" class="error-message">
+          Incorrect password. Please try again.
+        </div>
+
+        <input
+          type="password"
+          id="passwordInput"
+          class="password-input"
+          placeholder="Enter password"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit" class="login-btn">
+          Login
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const passwordInput = document.getElementById('passwordInput');
+    const errorMessage = document.getElementById('errorMessage');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = passwordInput.value;
+
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Store token in localStorage
+          localStorage.setItem('authToken', data.token);
+          // Redirect to main app
+          window.location.href = '/';
+        } else {
+          // Show error
+          errorMessage.classList.add('show');
+          passwordInput.value = '';
+          passwordInput.focus();
+
+          setTimeout(() => {
+            errorMessage.classList.remove('show');
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessage.textContent = 'Connection error. Please try again.';
+        errorMessage.classList.add('show');
+      }
+    });
+
+    // Clear error on input
+    passwordInput.addEventListener('input', () => {
+      errorMessage.classList.remove('show');
+    });
+  </script>
+</body>
+</html>

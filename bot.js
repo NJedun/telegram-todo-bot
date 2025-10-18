@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
 const WEBAPP_URL = process.env.WEBAPP_URL || `https://your-domain.com`;
+const APP_PASSWORD = process.env.APP_PASSWORD || "password123";
 
 if (!BOT_TOKEN) {
   console.error("❌ Error: BOT_TOKEN not found. Check your .env file.");
@@ -23,6 +24,29 @@ if (!BOT_TOKEN) {
 // Initialize Express app
 const app = express();
 app.use(express.json());
+
+// Authentication middleware
+const authenticate = (req, res, next) => {
+  const authToken = req.headers.authorization;
+
+  if (!authToken || authToken !== `Bearer ${APP_PASSWORD}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  next();
+};
+
+// Serve login page for root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// Serve main app (protected)
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
 // Initialize Telegram bot
@@ -54,16 +78,20 @@ const saveTasks = (tasks) => {
   }
 };
 
-// Initialize tasks storage
+// Initialize tasks storage - now using shared list (key: "shared")
 let allTasks = loadTasks();
+if (!allTasks.shared) {
+  allTasks.shared = [];
+}
 
 // Bot commands
 bot.start((ctx) => {
-  const webAppUrl = `${WEBAPP_URL}?userId=${ctx.from.id}`;
+  const webAppUrl = `${WEBAPP_URL}/app`;
 
   ctx.reply(
-    `👋 Welcome to your To-Do List!\n\n` +
-    `Click the button below to open your tasks.`,
+    `👋 Welcome to your Shared To-Do List!\n\n` +
+    `Click the button below to open your tasks.\n` +
+    `Note: All users share the same task list.`,
     {
       reply_markup: {
         inline_keyboard: [
@@ -85,34 +113,35 @@ bot.command("help", (ctx) => {
 
 // Express API endpoints
 
-// GET /tasks - Get all tasks for a user
-app.get("/tasks", (req, res) => {
-  const userId = req.query.userId;
+// Login endpoint
+app.post("/auth/login", (req, res) => {
+  const { password } = req.body;
 
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
+  if (password === APP_PASSWORD) {
+    res.json({ success: true, token: APP_PASSWORD });
+  } else {
+    res.json({ success: false, message: "Incorrect password" });
   }
-
-  const userTasks = allTasks[userId] || [];
-  res.json({ tasks: userTasks });
 });
 
-// POST /tasks - Update tasks for a user
-app.post("/tasks", (req, res) => {
-  const { userId, tasks } = req.body;
+// GET /tasks - Get shared tasks (protected)
+app.get("/tasks", authenticate, (req, res) => {
+  const sharedTasks = allTasks.shared || [];
+  res.json({ tasks: sharedTasks });
+});
 
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
-  }
+// POST /tasks - Update shared tasks (protected)
+app.post("/tasks", authenticate, (req, res) => {
+  const { tasks } = req.body;
 
   if (!Array.isArray(tasks)) {
     return res.status(400).json({ error: "tasks must be an array" });
   }
 
-  allTasks[userId] = tasks;
+  allTasks.shared = tasks;
   saveTasks(allTasks);
 
-  res.json({ success: true, tasks: allTasks[userId] });
+  res.json({ success: true, tasks: allTasks.shared });
 });
 
 // Health check endpoint
