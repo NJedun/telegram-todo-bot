@@ -1,50 +1,36 @@
-const CACHE_NAME = 'todo-app-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  'https://telegram.org/js/telegram-web-app.js'
-];
+// Service worker - network first strategy (always fetch fresh)
+const CACHE_NAME = 'todo-app-v3';
 
-// Install service worker and cache resources
+// Install - skip waiting to activate immediately
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+  self.skipWaiting();
 });
 
-// Fetch from cache first, then network
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
-
-// Activate and clean up old caches
+// Activate - claim clients immediately and clear all caches
 self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
+          // Delete ALL caches
+          return caches.delete(cacheName);
         })
       );
+    }).then(() => {
+      return self.clients.claim();
+    })
+  );
+});
+
+// Fetch - always use network (no caching for now to avoid issues)
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      // If network fails, return error page
+      return new Response('Offline - please check your connection', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain' }
+      });
     })
   );
 });
