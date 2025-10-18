@@ -1,4 +1,4 @@
-import { Telegraf, Markup } from "telegraf";
+import { Telegraf } from "telegraf";
 import express from "express";
 import fs from "fs";
 import path from "path";
@@ -64,9 +64,14 @@ bot.start((ctx) => {
   ctx.reply(
     `👋 Welcome to your To-Do List!\n\n` +
     `Click the button below to open your tasks.`,
-    Markup.keyboard([
-      Markup.button.webApp("📝 Open To-Do", webAppUrl)
-    ]).resize()
+    {
+      reply_markup: {
+        keyboard: [
+          [{ text: "📝 Open To-Do", web_app: { url: webAppUrl } }]
+        ],
+        resize_keyboard: true
+      }
+    }
   );
 });
 
