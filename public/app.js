@@ -24,9 +24,11 @@ const tasksList = document.getElementById('tasksList');
 const emptyState = document.getElementById('emptyState');
 const statsText = document.getElementById('statsText');
 const userInfo = document.getElementById('userInfo');
+const tabBtns = document.querySelectorAll('.tab-btn');
 
 // State
 let tasks = [];
+let currentFilter = 'all'; // 'all', 'active', 'completed'
 
 // API Base URL (adjust for production)
 const API_URL = window.location.origin;
@@ -46,6 +48,19 @@ async function init() {
     if (e.key === 'Enter') {
       addTask();
     }
+  });
+
+  // Tab filter listeners
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Update active tab
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Update filter
+      currentFilter = btn.dataset.filter;
+      renderTasks();
+    });
   });
 
   // Provide haptic feedback
@@ -176,12 +191,30 @@ async function deleteTask(id) {
 function renderTasks() {
   tasksList.innerHTML = '';
 
-  if (tasks.length === 0) {
+  // Filter tasks based on current tab
+  let filteredTasks = tasks;
+  if (currentFilter === 'active') {
+    filteredTasks = tasks.filter(t => !t.done);
+  } else if (currentFilter === 'completed') {
+    filteredTasks = tasks.filter(t => t.done);
+  }
+
+  if (filteredTasks.length === 0) {
     emptyState.classList.remove('hidden');
+    if (currentFilter === 'active') {
+      emptyState.querySelector('p').textContent = 'No active tasks!';
+      emptyState.querySelector('.empty-subtitle').textContent = 'All tasks completed 🎉';
+    } else if (currentFilter === 'completed') {
+      emptyState.querySelector('p').textContent = 'No completed tasks yet!';
+      emptyState.querySelector('.empty-subtitle').textContent = 'Mark tasks as done to see them here';
+    } else {
+      emptyState.querySelector('p').textContent = 'No tasks yet!';
+      emptyState.querySelector('.empty-subtitle').textContent = 'Add your first task above';
+    }
   } else {
     emptyState.classList.add('hidden');
 
-    tasks.forEach(task => {
+    filteredTasks.forEach(task => {
       const taskItem = createTaskElement(task);
       tasksList.appendChild(taskItem);
     });

@@ -38,7 +38,7 @@ body {
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
-  padding-bottom: 80px;
+  padding-bottom: 120px;
 }
 
 /* Header */
@@ -123,6 +123,39 @@ h1 {
 .add-icon {
   line-height: 1;
   display: block;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background-color: var(--tg-theme-secondary-bg-color);
+  border-radius: var(--border-radius);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background-color: transparent;
+  color: var(--tg-theme-hint-color);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn.active {
+  background-color: var(--tg-theme-button-color);
+  color: var(--tg-theme-button-text-color);
+  box-shadow: var(--shadow);
 }
 
 /* Tasks Container */
