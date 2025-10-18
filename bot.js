@@ -53,32 +53,51 @@ app.use(express.static(path.join(__dirname, "public")));
 const bot = new Telegraf(BOT_TOKEN);
 
 // Firestore collection reference
-const tasksCollection = db.collection('tasks');
-const SHARED_TASKS_DOC = 'shared';
+const listsCollection = db.collection('lists');
+const SHARED_DATA_DOC = 'shared';
 
-// Load tasks from Firestore
-const loadTasks = async () => {
+// Default lists
+const DEFAULT_LISTS = [
+  { id: 'travel', name: 'Travel', emoji: '✈️' },
+  { id: 'personal', name: 'Personal', emoji: '🎯' },
+  { id: 'work', name: 'Work', emoji: '💼' },
+  { id: 'shopping', name: 'Shopping', emoji: '🛒' }
+];
+
+// Load all data (lists and tasks)
+const loadAllData = async () => {
   try {
-    const doc = await tasksCollection.doc(SHARED_TASKS_DOC).get();
+    const doc = await listsCollection.doc(SHARED_DATA_DOC).get();
     if (doc.exists) {
-      return doc.data().tasks || [];
+      const data = doc.data();
+      return {
+        lists: data.lists || DEFAULT_LISTS,
+        tasks: data.tasks || {}
+      };
     }
-    return [];
+    // Initialize with default lists
+    const initialData = {
+      lists: DEFAULT_LISTS,
+      tasks: {}
+    };
+    await saveAllData(initialData);
+    return initialData;
   } catch (error) {
-    console.error("Error loading tasks from Firestore:", error);
-    return [];
+    console.error("Error loading data from Firestore:", error);
+    return { lists: DEFAULT_LISTS, tasks: {} };
   }
 };
 
-// Save tasks to Firestore
-const saveTasks = async (tasks) => {
+// Save all data to Firestore
+const saveAllData = async (data) => {
   try {
-    await tasksCollection.doc(SHARED_TASKS_DOC).set({
-      tasks: tasks,
+    await listsCollection.doc(SHARED_DATA_DOC).set({
+      lists: data.lists,
+      tasks: data.tasks,
       updatedAt: new Date()
     });
   } catch (error) {
-    console.error("Error saving tasks to Firestore:", error);
+    console.error("Error saving data to Firestore:", error);
     throw error;
   }
 };
@@ -123,31 +142,35 @@ app.post("/auth/login", (req, res) => {
   }
 });
 
-// GET /tasks - Get shared tasks (protected)
-app.get("/tasks", authenticate, async (req, res) => {
+// GET /data - Get all lists and tasks (protected)
+app.get("/data", authenticate, async (req, res) => {
   try {
-    const tasks = await loadTasks();
-    res.json({ tasks: tasks });
+    const data = await loadAllData();
+    res.json(data);
   } catch (error) {
-    console.error("Error fetching tasks:", error);
-    res.status(500).json({ error: "Failed to load tasks" });
+    console.error("Error fetching data:", error);
+    res.status(500).json({ error: "Failed to load data" });
   }
 });
 
-// POST /tasks - Update shared tasks (protected)
-app.post("/tasks", authenticate, async (req, res) => {
+// POST /data - Update all data (protected)
+app.post("/data", authenticate, async (req, res) => {
   try {
-    const { tasks } = req.body;
+    const { lists, tasks } = req.body;
 
-    if (!Array.isArray(tasks)) {
-      return res.status(400).json({ error: "tasks must be an array" });
+    if (!Array.isArray(lists)) {
+      return res.status(400).json({ error: "lists must be an array" });
     }
 
-    await saveTasks(tasks);
-    res.json({ success: true, tasks: tasks });
+    if (typeof tasks !== 'object') {
+      return res.status(400).json({ error: "tasks must be an object" });
+    }
+
+    await saveAllData({ lists, tasks });
+    res.json({ success: true, lists, tasks });
   } catch (error) {
-    console.error("Error saving tasks:", error);
-    res.status(500).json({ error: "Failed to save tasks" });
+    console.error("Error saving data:", error);
+    res.status(500).json({ error: "Failed to save data" });
   }
 });
 

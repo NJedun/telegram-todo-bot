@@ -25,9 +25,13 @@ const emptyState = document.getElementById('emptyState');
 const statsText = document.getElementById('statsText');
 const userInfo = document.getElementById('userInfo');
 const tabBtns = document.querySelectorAll('.tab-btn');
+const listsContainer = document.getElementById('listsContainer');
+const addListBtn = document.getElementById('addListBtn');
 
 // State
-let tasks = [];
+let lists = [];
+let allTasks = {}; // Object with listId as keys, arrays of tasks as values
+let currentListId = null;
 let currentFilter = 'active'; // 'all', 'active', 'completed'
 
 // API Base URL (adjust for production)
@@ -37,10 +41,10 @@ const API_URL = window.location.origin;
 async function init() {
   // Display user info
   const userName = tg.initDataUnsafe?.user?.first_name || 'User';
-  userInfo.textContent = `Welcome, ${userName}! (Shared List)`;
+  userInfo.textContent = `Welcome, ${userName}!`;
 
-  // Load tasks
-  await loadTasks();
+  // Load all data (lists and tasks)
+  await loadAllData();
 
   // Event listeners
   addBtn.addEventListener('click', addTask);
@@ -63,51 +67,67 @@ async function init() {
     });
   });
 
+  // Add list button
+  addListBtn.addEventListener('click', createNewList);
+
   // Provide haptic feedback
   tg.ready();
 }
 
-// Load tasks from server
-async function loadTasks() {
+// Load all data (lists and tasks) from server
+async function loadAllData() {
   try {
-    const response = await fetch(`${API_URL}/tasks`, {
+    const response = await fetch(`${API_URL}/data`, {
       headers: {
         'Authorization': `Bearer ${authToken}`
       }
     });
 
     if (response.status === 401) {
-      // Token invalid, redirect to login
       localStorage.removeItem('authToken');
       window.location.href = '/';
       return;
     }
 
     const data = await response.json();
-    tasks = data.tasks || [];
+    lists = data.lists || [];
+    allTasks = data.tasks || {};
+
+    // Set first list as current if none selected
+    if (lists.length > 0 && !currentListId) {
+      currentListId = lists[0].id;
+    }
+
+    // Initialize tasks for lists that don't have any
+    lists.forEach(list => {
+      if (!allTasks[list.id]) {
+        allTasks[list.id] = [];
+      }
+    });
+
+    renderLists();
     renderTasks();
   } catch (error) {
-    console.error('Error loading tasks:', error);
-    tg.showAlert('Failed to load tasks. Please try again.');
+    console.error('Error loading data:', error);
   }
 }
 
-// Save tasks to server
-async function saveTasks() {
+// Save all data to server
+async function saveAllData() {
   try {
-    const response = await fetch(`${API_URL}/tasks`, {
+    const response = await fetch(`${API_URL}/data`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({
-        tasks: tasks
+        lists: lists,
+        tasks: allTasks
       })
     });
 
     if (response.status === 401) {
-      // Token invalid, redirect to login
       localStorage.removeItem('authToken');
       window.location.href = '/';
       return;
@@ -120,13 +140,15 @@ async function saveTasks() {
 
     return await response.json();
   } catch (error) {
-    console.error('Error saving tasks:', error);
+    console.error('Error saving data:', error);
     throw error;
   }
 }
 
 // Add new task
 async function addTask() {
+  if (!currentListId) return;
+
   const text = taskInput.value.trim();
 
   if (!text) {
@@ -141,19 +163,22 @@ async function addTask() {
     createdAt: new Date().toISOString()
   };
 
-  tasks.unshift(newTask);
+  if (!allTasks[currentListId]) {
+    allTasks[currentListId] = [];
+  }
+
+  allTasks[currentListId].unshift(newTask);
   taskInput.value = '';
 
-  // Haptic feedback
   tg.HapticFeedback?.impactOccurred('light');
 
   renderTasks();
 
   try {
-    await saveTasks();
+    await saveAllData();
   } catch (error) {
     // Revert if save failed
-    tasks.shift();
+    allTasks[currentListId].shift();
     renderTasks();
     alert('Failed to save task: ' + error.message);
   }
@@ -161,28 +186,31 @@ async function addTask() {
 
 // Toggle task completion
 async function toggleTask(id) {
-  const task = tasks.find(t => t.id === id);
+  if (!currentListId) return;
+
+  const task = allTasks[currentListId]?.find(t => t.id === id);
   if (task) {
     task.done = !task.done;
-    tg.HapticFeedback.impactOccurred('light');
+    tg.HapticFeedback?.impactOccurred('light');
     renderTasks();
-    await saveTasks();
+    await saveAllData();
   }
 }
 
 // Delete task
 async function deleteTask(id) {
-  const taskIndex = tasks.findIndex(t => t.id === id);
+  if (!currentListId) return;
+
+  const taskIndex = allTasks[currentListId]?.findIndex(t => t.id === id);
   if (taskIndex !== -1) {
-    // Confirm deletion
-    const task = tasks[taskIndex];
+    const task = allTasks[currentListId][taskIndex];
     const confirmed = confirm(`Delete task: "${task.text}"?`);
 
     if (confirmed) {
-      tasks.splice(taskIndex, 1);
-      tg.HapticFeedback.notificationOccurred('success');
+      allTasks[currentListId].splice(taskIndex, 1);
+      tg.HapticFeedback?.notificationOccurred('success');
       renderTasks();
-      await saveTasks();
+      await saveAllData();
     }
   }
 }
@@ -191,12 +219,21 @@ async function deleteTask(id) {
 function renderTasks() {
   tasksList.innerHTML = '';
 
+  if (!currentListId) {
+    emptyState.classList.remove('hidden');
+    emptyState.querySelector('p').textContent = 'Select a list!';
+    emptyState.querySelector('.empty-subtitle').textContent = 'Choose a list from above to view tasks';
+    return;
+  }
+
+  const currentTasks = allTasks[currentListId] || [];
+
   // Filter tasks based on current tab
-  let filteredTasks = tasks;
+  let filteredTasks = currentTasks;
   if (currentFilter === 'active') {
-    filteredTasks = tasks.filter(t => !t.done);
+    filteredTasks = currentTasks.filter(t => !t.done);
   } else if (currentFilter === 'completed') {
-    filteredTasks = tasks.filter(t => t.done);
+    filteredTasks = currentTasks.filter(t => t.done);
   }
 
   if (filteredTasks.length === 0) {
@@ -267,8 +304,14 @@ function createTaskElement(task) {
 
 // Update statistics
 function updateStats() {
-  const total = tasks.length;
-  const completed = tasks.filter(t => t.done).length;
+  if (!currentListId) {
+    statsText.textContent = 'No list selected';
+    return;
+  }
+
+  const currentTasks = allTasks[currentListId] || [];
+  const total = currentTasks.length;
+  const completed = currentTasks.filter(t => t.done).length;
   const pending = total - completed;
 
   if (total === 0) {
@@ -278,6 +321,49 @@ function updateStats() {
   } else {
     statsText.textContent = `${pending} pending · ${completed} completed · ${total} total`;
   }
+}
+
+// Render lists
+function renderLists() {
+  listsContainer.innerHTML = '';
+
+  lists.forEach(list => {
+    const listTab = document.createElement('button');
+    listTab.className = `list-tab ${list.id === currentListId ? 'active' : ''}`;
+    listTab.innerHTML = `<span>${list.emoji}</span><span>${list.name}</span>`;
+    listTab.addEventListener('click', () => switchList(list.id));
+    listsContainer.appendChild(listTab);
+  });
+}
+
+// Switch to different list
+function switchList(listId) {
+  currentListId = listId;
+  renderLists();
+  renderTasks();
+}
+
+// Create new list
+function createNewList() {
+  const listName = prompt('Enter list name:');
+  if (!listName) return;
+
+  const emojis = ['📋', '🎯', '✨', '💡', '🔥', '⭐', '🌟', '🎨', '🏆', '🎁'];
+  const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+  const newList = {
+    id: Date.now().toString(),
+    name: listName,
+    emoji: randomEmoji
+  };
+
+  lists.push(newList);
+  allTasks[newList.id] = [];
+  currentListId = newList.id;
+
+  renderLists();
+  renderTasks();
+  saveAllData();
 }
 
 // Drag and drop functionality
@@ -313,15 +399,17 @@ function handleDrop(e) {
     e.stopPropagation();
   }
 
+  if (!currentListId) return false;
+
   // Update tasks array to match new order
   const taskElements = Array.from(tasksList.children);
   const newTasks = taskElements.map(el => {
     const taskId = parseInt(el.dataset.taskId);
-    return tasks.find(t => t.id === taskId);
+    return allTasks[currentListId].find(t => t.id === taskId);
   }).filter(t => t !== undefined);
 
-  tasks = newTasks;
-  saveTasks();
+  allTasks[currentListId] = newTasks;
+  saveAllData();
 
   return false;
 }
