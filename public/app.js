@@ -99,13 +99,13 @@ async function saveTasks() {
     }
 
     if (!response.ok) {
-      throw new Error('Failed to save tasks');
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('Error saving tasks:', error);
-    tg.showAlert('Failed to save tasks. Please try again.');
     throw error;
   }
 }
@@ -115,7 +115,7 @@ async function addTask() {
   const text = taskInput.value.trim();
 
   if (!text) {
-    tg.HapticFeedback.notificationOccurred('error');
+    tg.HapticFeedback?.notificationOccurred('error');
     return;
   }
 
@@ -130,10 +130,18 @@ async function addTask() {
   taskInput.value = '';
 
   // Haptic feedback
-  tg.HapticFeedback.impactOccurred('light');
+  tg.HapticFeedback?.impactOccurred('light');
 
   renderTasks();
-  await saveTasks();
+
+  try {
+    await saveTasks();
+  } catch (error) {
+    // Revert if save failed
+    tasks.shift();
+    renderTasks();
+    alert('Failed to save task: ' + error.message);
+  }
 }
 
 // Toggle task completion
