@@ -159,6 +159,7 @@ app.get("/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Express server running on port ${PORT}`);
   console.log(`📱 WebApp URL: ${WEBAPP_URL}`);
+  console.log(`🔐 Password configured: ${APP_PASSWORD ? 'Yes' : 'No'}`);
 });
 
 // Start Telegram bot
