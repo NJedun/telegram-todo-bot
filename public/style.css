@@ -148,6 +148,17 @@ h1 {
   gap: 12px;
   transition: all 0.2s ease;
   animation: slideIn 0.3s ease;
+  cursor: grab;
+}
+
+.task-item:active {
+  cursor: grabbing;
+}
+
+.task-item.dragging {
+  opacity: 0.5;
+  transform: scale(1.05);
+  box-shadow: var(--shadow-hover);
 }
 
 @keyframes slideIn {
@@ -173,6 +184,25 @@ h1 {
 .task-item.completed .task-text {
   text-decoration: line-through;
   color: var(--tg-theme-hint-color);
+}
+
+/* Drag Handle */
+.drag-handle {
+  color: var(--tg-theme-hint-color);
+  font-size: 18px;
+  cursor: grab;
+  padding: 0 4px;
+  user-select: none;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.task-item:hover .drag-handle {
+  opacity: 0.8;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 /* Custom Checkbox */

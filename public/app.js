@@ -194,6 +194,13 @@ function renderTasks() {
 function createTaskElement(task) {
   const taskItem = document.createElement('div');
   taskItem.className = `task-item ${task.done ? 'completed' : ''}`;
+  taskItem.draggable = true;
+  taskItem.dataset.taskId = task.id;
+
+  // Drag handle
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'drag-handle';
+  dragHandle.innerHTML = '⋮⋮';
 
   // Checkbox
   const checkbox = document.createElement('div');
@@ -211,6 +218,13 @@ function createTaskElement(task) {
   deleteBtn.innerHTML = '🗑';
   deleteBtn.addEventListener('click', () => deleteTask(task.id));
 
+  // Drag events
+  taskItem.addEventListener('dragstart', handleDragStart);
+  taskItem.addEventListener('dragover', handleDragOver);
+  taskItem.addEventListener('drop', handleDrop);
+  taskItem.addEventListener('dragend', handleDragEnd);
+
+  taskItem.appendChild(dragHandle);
   taskItem.appendChild(checkbox);
   taskItem.appendChild(taskText);
   taskItem.appendChild(deleteBtn);
@@ -231,6 +245,72 @@ function updateStats() {
   } else {
     statsText.textContent = `${pending} pending · ${completed} completed · ${total} total`;
   }
+}
+
+// Drag and drop functionality
+let draggedElement = null;
+
+function handleDragStart(e) {
+  draggedElement = e.target;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', e.target.innerHTML);
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  e.dataTransfer.dropEffect = 'move';
+
+  const afterElement = getDragAfterElement(tasksList, e.clientY);
+  const draggable = draggedElement;
+
+  if (afterElement == null) {
+    tasksList.appendChild(draggable);
+  } else {
+    tasksList.insertBefore(draggable, afterElement);
+  }
+
+  return false;
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation();
+  }
+
+  // Update tasks array to match new order
+  const taskElements = Array.from(tasksList.children);
+  const newTasks = taskElements.map(el => {
+    const taskId = parseInt(el.dataset.taskId);
+    return tasks.find(t => t.id === taskId);
+  }).filter(t => t !== undefined);
+
+  tasks = newTasks;
+  saveTasks();
+
+  return false;
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  draggedElement = null;
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 // Start the app
