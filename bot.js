@@ -96,12 +96,12 @@ if (!allTasks.shared) {
 
 // Bot commands
 bot.start((ctx) => {
-  const webAppUrl = `${WEBAPP_URL}/app`;
+  const webAppUrl = `${WEBAPP_URL}`;
 
   ctx.reply(
     `👋 Welcome to your Shared To-Do List!\n\n` +
     `Click the button below to open your tasks.\n` +
-    `Note: All users share the same task list.`,
+    `Note: You'll need to enter the password to access the shared list.`,
     {
       reply_markup: {
         inline_keyboard: [
