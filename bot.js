@@ -80,8 +80,18 @@ const saveTasks = (tasks) => {
 
 // Initialize tasks storage - now using shared list (key: "shared")
 let allTasks = loadTasks();
+
+// Migrate old format (array) to new format (object with shared key)
+if (Array.isArray(allTasks)) {
+  console.log('Migrating old tasks format to new shared format...');
+  allTasks = { shared: allTasks };
+  saveTasks(allTasks);
+}
+
+// Ensure shared array exists
 if (!allTasks.shared) {
   allTasks.shared = [];
+  saveTasks(allTasks);
 }
 
 // Bot commands
@@ -117,15 +127,9 @@ bot.command("help", (ctx) => {
 app.post("/auth/login", (req, res) => {
   const { password } = req.body;
 
-  console.log('Login attempt - Received password:', password);
-  console.log('Expected password:', APP_PASSWORD);
-  console.log('Match:', password === APP_PASSWORD);
-
   if (password === APP_PASSWORD) {
-    console.log('✅ Login successful');
     res.json({ success: true, token: APP_PASSWORD });
   } else {
-    console.log('❌ Login failed - password mismatch');
     res.json({ success: false, message: "Incorrect password" });
   }
 });
@@ -159,7 +163,6 @@ app.get("/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Express server running on port ${PORT}`);
   console.log(`📱 WebApp URL: ${WEBAPP_URL}`);
-  console.log(`🔐 Password configured: ${APP_PASSWORD ? 'Yes' : 'No'}`);
 });
 
 // Start Telegram bot
