@@ -28,7 +28,7 @@ const tabBtns = document.querySelectorAll('.tab-btn');
 
 // State
 let tasks = [];
-let currentFilter = 'all'; // 'all', 'active', 'completed'
+let currentFilter = 'active'; // 'all', 'active', 'completed'
 
 // API Base URL (adjust for production)
 const API_URL = window.location.origin;
